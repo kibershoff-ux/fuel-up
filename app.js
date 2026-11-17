@@ -361,7 +361,7 @@ function guessSweet(name, sugar100, added100) {
 }
 function titleCase(s) { return s.length > 3 && s === s.toUpperCase() ? s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : s; }
 async function searchUSDA(q) {
-  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(usdaKey())}&query=${encodeURIComponent(q)}&pageSize=25&dataType=${encodeURIComponent('Foundation,SR Legacy,Survey (FNDDS),Branded')}`;
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(usdaKey())}&query=${encodeURIComponent(q)}&pageSize=25&dataType=Survey%20(FNDDS)&dataType=Foundation&dataType=SR%20Legacy&dataType=Branded`;
   const r = await fetch(url);
   if (!r.ok) throw new Error('usda ' + r.status);
   const j = await r.json();
@@ -374,7 +374,7 @@ async function searchUSDA(q) {
     const added100 = added != null ? added : (sweet ? sugar : 0);
     let servingG = null, servingLabel = '';
     if (fd.servingSize && /^(g|grm|ml|mlt)$/i.test(fd.servingSizeUnit || '')) { servingG = fd.servingSize; servingLabel = (fd.householdServingFullText ? fd.householdServingFullText + ' · ' : '') + r0(fd.servingSize) + ' ' + (fd.servingSizeUnit || 'g').toLowerCase().replace('grm', 'g').replace('mlt', 'ml'); }
-    else if (fd.foodMeasures && fd.foodMeasures.length) { const fm = fd.foodMeasures.find(x => x.gramWeight) ; if (fm) { servingG = fm.gramWeight; servingLabel = (fm.disseminationText || fm.measureUnitName || '') + ' · ' + r0(fm.gramWeight) + ' g'; } }
+    else if (fd.foodMeasures && fd.foodMeasures.length) { const ms = fd.foodMeasures.filter(x => x.gramWeight).sort((a, b) => (a.rank || 99) - (b.rank || 99)); const fm = ms.find(x => !/not specified/i.test(x.disseminationText || '')) || ms[0]; if (fm) { servingG = fm.gramWeight; servingLabel = (fm.disseminationText || fm.measureUnitName || '') + ' · ' + r0(fm.gramWeight) + ' g'; } }
     return { id: 'usda_' + fd.fdcId, name, brand: titleCase(fd.brandName || fd.brandOwner || ''), src: 'usda', barcode: fd.gtinUpc || '',
       per100: true, kcal100: kcal, protein100: protein, added100, servingG: servingG ? r0(servingG) : null, servingLabel, sweet, emoji: sweet ? '🍭' : '🍽️' };
   }).filter(Boolean);
@@ -428,7 +428,7 @@ function tabSearch(el) {
     if (!res) {
       res = [];
       try { res = await searchUSDA(q); } catch (e) { console.warn(e); }
-      if (res.length < 5) { try { res = res.concat(await searchOFF(q)); } catch (e) { console.warn(e); } }
+      
       if (res.length) cache.set(q, res);
     }
     if (!res.length) { out.innerHTML = `<p class="muted">No luck finding “${esc(q)}”. Try fewer words, or use ✏️ Make to add it yourself.</p>`; return; }
